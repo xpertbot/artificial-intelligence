@@ -53,8 +53,35 @@ def naked_twins(values):
     Pseudocode for this algorithm on github:
     https://github.com/udacity/artificial-intelligence/blob/master/Projects/1_Sudoku/pseudocode.md
     """
-    # TODO: Implement this function!
-    raise NotImplementedError
+    # Find all instances of naked twins
+    # Eliminate the naked twins as possibilities for their peers
+    for unit in unitlist:
+        not_solved = []
+        pair = []
+        twin = ''
+        not_twins = []
+
+        for box in unit :
+            if len(values[box]) > 1 :
+                not_solved.append(box)
+        for ns in not_solved :
+            if len(values[ns]) == 2 :
+                pair.append(ns)
+        el=[values[elem] for elem in pair]
+        s = set([x for x in el if el.count(x) > 1])
+        if len(s) > 0:
+            twin = s.pop()
+
+        for ns in not_solved :
+            # if it's not part of the twin pair
+            if values[ns] != twin :
+                not_twins.append(ns)
+        
+        for box in not_twins:
+            for char in twin: 
+                val = values[box].replace(char, '')
+                values = assign_value(values, box, val)  
+    return values
 
 
 def eliminate(values):
@@ -73,8 +100,12 @@ def eliminate(values):
     dict
         The values dictionary with the assigned values eliminated from peers
     """
-    # TODO: Copy your code from the classroom to complete this function
-    raise NotImplementedError
+    solved_values = [box for box in values.keys() if len(values[box]) == 1]
+    for box in solved_values:
+        digit = values[box]
+        for peer in peers[box]:
+            values[peer] = values[peer].replace(digit,'')
+    return values
 
 
 def only_choice(values):
@@ -97,8 +128,12 @@ def only_choice(values):
     -----
     You should be able to complete this function by copying your code from the classroom
     """
-    # TODO: Copy your code from the classroom to complete this function
-    raise NotImplementedError
+    for unit in unitlist:
+        for digit in '123456789':
+            dplaces = [box for box in unit if digit in values[box]]
+            if len(dplaces) == 1:
+                values[dplaces[0]] = digit
+    return values
 
 
 def reduce_puzzle(values):
@@ -115,8 +150,16 @@ def reduce_puzzle(values):
         The values dictionary after continued application of the constraint strategies
         no longer produces any changes, or False if the puzzle is unsolvable 
     """
-    # TODO: Copy your code from the classroom and modify it to complete this function
-    raise NotImplementedError
+    stalled = False
+    while not stalled:
+        solved_values_before = len([box for box in values.keys() if len(values[box]) == 1])
+        values = eliminate(values)
+        values = only_choice(values)
+        solved_values_after = len([box for box in values.keys() if len(values[box]) == 1])
+        stalled = solved_values_before == solved_values_after
+        if len([box for box in values.keys() if len(values[box]) == 0]):
+            return False
+    return values
 
 
 def search(values):
@@ -138,8 +181,29 @@ def search(values):
     You should be able to complete this function by copying your code from the classroom
     and extending it to call the naked twins strategy.
     """
-    # TODO: Copy your code from the classroom to complete this function
-    raise NotImplementedError
+    # First, reduce the puzzle using the previous function
+    values = reduce_puzzle(values)
+    if values is False:
+        return False ## Failed earlier
+
+    if all(len(values[s]) == 1 for s in boxes):
+        return values ## Solved!
+
+    # Choose one of the unfilled squares with the fewest possibilities
+    lowest_box = None
+    for k, v in values.items():
+        current_len = len(v)
+        if (current_len > 1) :
+            if lowest_box == None or current_len < len(values[lowest_box]) :
+                lowest_box = k
+
+    # Now use recursion to solve each one of the resulting sudokus, and if one returns a value (not False), return that answer!
+    for value in values[lowest_box] :
+        new_values = values.copy()
+        new_values[lowest_box] = value
+        solution = search(new_values)
+        if (solution) :
+            return solution
 
 
 def solve(grid):

@@ -220,7 +220,7 @@ class PlanningGraph:
         # TODO: implement maxlevel heuristic
         self.fill()
 
-        costs =[]
+        costs =[0] #initialize it, throws error if no results found
         for g in self.goal:
             result = self.levelcost(g)
             if result:

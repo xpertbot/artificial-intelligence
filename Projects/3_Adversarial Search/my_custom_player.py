@@ -1,6 +1,9 @@
 
 from sample_players import DataPlayer
+import random, time, operator
 
+DEPTH = 4
+MAX_TIME = 150
 
 class CustomPlayer(DataPlayer):
     """ Implement your own agent to play knight's Isolation
@@ -30,7 +33,7 @@ class CustomPlayer(DataPlayer):
         See RandomPlayer and GreedyPlayer in sample_players for more examples.
 
         **********************************************************************
-        NOTE: 
+        NOTE:
         - The caller is responsible for cutting off search, so calling
           get_action() from your own code will create an infinite loop!
           Refer to (and use!) the Isolation.play() function to run games.
@@ -42,5 +45,74 @@ class CustomPlayer(DataPlayer):
         # EXAMPLE: choose a random move without any search--this function MUST
         #          call self.queue.put(ACTION) at least once before time expires
         #          (the timer is automatically managed for you)
-        import random
-        self.queue.put(random.choice(state.actions()))
+
+        # If at beginning of game use our opening_book of moves
+        current_action = None
+
+        if state.ply_count <= DEPTH:
+            if state.board in self.data:
+              #grab action with the most available moves
+              current_action = self.data[state.board] #returns a tuple
+
+        if current_action == None:
+          current_action = self.alpha_beta_search(state, DEPTH)
+
+        self.queue.put(current_action)
+
+    def alpha_beta_search(self, state, depth):
+
+        alpha = float("-inf")
+        beta = float("inf")
+        best_score = float("-inf")
+        best_move = None
+        for a in state.actions():
+            v = self.min_value(state.result(a), alpha, beta, depth-1)
+            alpha = max(alpha, v)
+            if v >= best_score:
+                best_score = v
+                best_move = a
+        return best_move
+
+    def min_value(self, state, alpha, beta, depth):
+        """ Return the value for a win (+1) if the game is over,
+        otherwise return the minimum value over all legal child
+        nodes.
+        """
+        if state.terminal_test():
+            return state.utility(self.player_id)
+
+        if(depth <= 0 ): return self.score(state)
+
+        v = float("inf")
+        for a in state.actions():
+            v = min(v, self.max_value(state.result(a), alpha, beta, depth-1))
+            if v <= alpha:
+                return v
+            beta = min(beta, v)
+        return v
+
+    def max_value(self, state, alpha, beta, depth):
+        """ Return the value for a loss (-1) if the game is over,
+        otherwise return the maximum value over all legal child
+        nodes.
+        """
+        if state.terminal_test():
+            return state.utility(self.player_id)
+        if(depth <= 0 ): return self.score(state)
+
+
+        v = float("-inf")
+        for a in state.actions():
+            v = max(v, self.min_value(state.result(a), alpha, beta, depth-1))
+            if v >= beta:
+                return v
+            alpha = max(alpha, v)
+        return v
+
+    def score(self, state):
+        own_loc = state.locs[self.player_id]
+        opp_loc = state.locs[1 - self.player_id]
+        own_liberties = state.liberties(own_loc)
+        opp_liberties = state.liberties(opp_loc)
+        return len(own_liberties) - len(opp_liberties)
+
